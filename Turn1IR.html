@@ -1,1 +1,344 @@
-T1IR
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Royal Territory Control</title>
+    <style>
+        :root {
+            --fawn: #E5D3B3;
+            --dark-fawn: #D4BA94;
+            --light-green: #C5E1A5;
+            --light-red: #FFCDD2;
+            --royal-blue: #4A148C;
+            --gold: #FFD700;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--fawn);
+            color: var(--royal-blue);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        #game-container, #tutorial-container, #game-over-container {
+            background-color: var(--dark-fawn);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        #tutorial-container, #game-over-container {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        #menu, #game-board, #game-info {
+            margin-bottom: 20px;
+        }
+        #game-board {
+            display: inline-grid;
+            grid-template-columns: repeat(8, 50px);
+            gap: 2px;
+            background-color: var(--dark-fawn);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: var(--fawn);
+            border: 1px solid var(--dark-fawn);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 24px;
+            transition: all 0.3s ease;
+        }
+        .cell:hover {
+            background-color: var(--gold);
+        }
+        .shadow {
+            background-color: var(--light-red);
+        }
+        .controlled {
+            background-color: var(--light-green);
+        }
+        select, button {
+            background-color: var(--fawn);
+            border: 2px solid var(--royal-blue);
+            color: var(--royal-blue);
+            padding: 8px 12px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        select:hover, button:hover {
+            background-color: var(--royal-blue);
+            color: var(--fawn);
+        }
+        #game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        #piece-select {
+            width: 200px;
+        }
+        .tutorial-section {
+            margin-bottom: 20px;
+        }
+        .tutorial-section h3 {
+            color: var(--royal-blue);
+        }
+        .piece-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 99;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="menu">
+            <select id="difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+            <button id="start-button" onclick="startGame()">Start Game</button>
+            <button onclick="showTutorial()">Tutorial</button>
+        </div>
+        <div id="game-board"></div>
+        <div id="game-info">
+            <p>Points: <span id="points">0</span></p>
+            <select id="piece-select">
+                <option value="♔">King (♔) - 5 points</option>
+                <option value="♕">Queen (♕) - 9 points</option>
+                <option value="♘">Knight (♘) - 3 points</option>
+                <option value="♖">Rook (♖) - 5 points</option>
+                <option value="♗">Bishop (♗) - 4 points</option>
+            </select>
+            <p>Turns left: <span id="turns">0</span></p>
+        </div>
+    </div>
+
+    <div id="tutorial-container">
+        <h2>How to Play Royal Territory Control</h2>
+        <div class="tutorial-section">
+            <h3>Objective</h3>
+            <p>Place royal chess pieces on the board to capture shadows and control territories. Maximize your points within the given number of turns.</p>
+        </div>
+        <div class="tutorial-section">
+            <h3>Pieces and Their Costs</h3>
+            <div class="piece-info"><span>♔ King - 5 points</span><span>Moves one square in any direction</span></div>
+            <div class="piece-info"><span>♕ Queen - 9 points</span><span>Moves any number of squares in any direction</span></div>
+            <div class="piece-info"><span>♘ Knight - 3 points</span><span>Moves in an L-shape (2 squares in one direction, then 1 square perpendicular)</span></div>
+            <div class="piece-info"><span>♖ Rook - 5 points</span><span>Moves any number of squares horizontally or vertically</span></div>
+            <div class="piece-info"><span>♗ Bishop - 4 points</span><span>Moves any number of squares diagonally</span></div>
+        </div>
+        <div class="tutorial-section">
+            <h3>Gameplay</h3>
+            <ol>
+                <li>Select a difficulty level and start the game.</li>
+                <li>Choose a piece from the dropdown menu.</li>
+                <li>Click on an empty cell to place the piece (if you have enough points).</li>
+                <li>Capture shadows along the piece's movement path to earn 5 points per shadow.</li>
+                <li>Control entire rows or columns to earn 10 points each.</li>
+                <li>The game ends when you run out of turns or capture all shadows.</li>
+            </ol>
+        </div>
+        <div class="tutorial-section">
+            <h3>Tips</h3>
+            <ul>
+                <li>Plan your moves carefully to maximize shadow captures and territory control.</li>
+                <li>Balance between using expensive powerful pieces and cheaper pieces to optimize point usage.</li>
+                <li>Try to control multiple territories with a single piece placement.</li>
+            </ul>
+        </div>
+        <button onclick="hideTutorial()">Close Tutorial</button>
+    </div>
+
+    <div id="game-over-container">
+        <h2>Game Over</h2>
+        <p>Final Score: <span id="final-score"></span></p>
+        <p>Shadows Remaining: <span id="shadows-remaining"></span></p>
+        <p>Controlled Rows: <span id="controlled-rows"></span></p>
+        <p>Controlled Columns: <span id="controlled-columns"></span></p>
+        <button onclick="startGame()">Play Again</button>
+        <button onclick="hideGameOver()">Close</button>
+    </div>
+
+    <div id="overlay"></div>
+
+    <script>
+        const board = [];
+        const pieces = {
+            '♔': { cost: 5, moves: [[0,1],[1,0],[0,-1],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]] },
+            '♕': { cost: 9, moves: [[0,1],[1,0],[0,-1],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]] },
+            '♘': { cost: 3, moves: [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]] },
+            '♖': { cost: 5, moves: [[0,1],[1,0],[0,-1],[-1,0]] },
+            '♗': { cost: 4, moves: [[1,1],[1,-1],[-1,1],[-1,-1]] }
+        };
+        let points, turnsLeft, shadows, gameActive = false;
+
+        function createBoard() {
+            const gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = '';
+            for (let i = 0; i < 8; i++) {
+                board[i] = [];
+                for (let j = 0; j < 8; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.onclick = () => placePiece(i, j);
+                    gameBoard.appendChild(cell);
+                    board[i][j] = { element: cell, piece: null, shadow: false };
+                }
+            }
+        }
+
+        function startGame() {
+            if (gameActive) {
+                if (!confirm("Are you sure you want to start a new game?")) return;
+            }
+            hideGameOver();
+            createBoard();
+            const difficulty = document.getElementById('difficulty').value;
+            points = 50;
+            turnsLeft = difficulty === 'easy' ? 25 : difficulty === 'medium' ? 20 : 15;
+            shadows = difficulty === 'easy' ? 10 : difficulty === 'medium' ? 15 : 20;
+            placeShadows();
+            updateDisplay();
+            gameActive = true;
+            document.getElementById('start-button').textContent = "Restart Game";
+        }
+
+        function placeShadows() {
+            for (let i = 0; i < shadows; i++) {
+                let x, y;
+                do {
+                    x = Math.floor(Math.random() * 8);
+                    y = Math.floor(Math.random() * 8);
+                } while (board[y][x].shadow || board[y][x].piece);
+                board[y][x].shadow = true;
+                board[y][x].element.classList.add('shadow');
+            }
+        }
+
+        function placePiece(y, x) {
+            if (!gameActive || turnsLeft <= 0 || board[y][x].piece || board[y][x].shadow) return;
+            const pieceType = document.getElementById('piece-select').value;
+            const pieceCost = pieces[pieceType].cost;
+            if (points >= pieceCost) {
+                board[y][x].piece = pieceType;
+                board[y][x].element.textContent = pieceType;
+                points -= pieceCost;
+                turnsLeft--;
+                captureShadows(y, x, pieceType);
+                checkControl();
+                updateDisplay();
+                if (turnsLeft <= 0 || shadows <= 0) endGame();
+            } else {
+                alert("Not enough points to place this piece!");
+            }
+        }
+
+        function captureShadows(y, x, pieceType) {
+            pieces[pieceType].moves.forEach(([dy, dx]) => {
+                let ny = y + dy, nx = x + dx;
+                while (ny >= 0 && ny < 8 && nx >= 0 && nx < 8) {
+                    if (board[ny][nx].shadow) {
+                        board[ny][nx].shadow = false;
+                        board[ny][nx].element.classList.remove('shadow');
+                        points += 5;
+                        shadows--;
+                    }
+                    if (board[ny][nx].piece || pieceType === '♘') break;
+                    ny += dy;
+                    nx += dx;
+                }
+            });
+        }
+
+        function checkControl() {
+            let controlledRows = 0;
+            let controlledColumns = 0;
+            for (let i = 0; i < 8; i++) {
+                if (board[i].every(cell => cell.piece || (!cell.shadow && !cell.piece))) {
+                    board[i].forEach(cell => cell.element.classList.add('controlled'));
+                    controlledRows++;
+                } else {
+                    board[i].forEach(cell => cell.element.classList.remove('controlled'));
+                }
+                if (board.every(row => row[i].piece || (!row[i].shadow && !row[i].piece))) {
+                    for (let j = 0; j < 8; j++) board[j][i].element.classList.add('controlled');
+                    controlledColumns++;
+                } else {
+                    for (let j = 0; j < 8; j++) board[j][i].element.classList.remove('controlled');
+                }
+            }
+            points += (controlledRows + controlledColumns) * 10;
+            return { controlledRows, controlledColumns };
+        }
+
+        function updateDisplay() {
+            document.getElementById('points').textContent = points;
+            document.getElementById('turns').textContent = turnsLeft;
+        }
+
+        function endGame() {
+            gameActive = false;
+            const { controlledRows, controlledColumns } = checkControl();
+            document.getElementById('final-score').textContent = points;
+            document.getElementById('shadows-remaining').textContent = shadows;
+            document.getElementById('controlled-rows').textContent = controlledRows;
+            document.getElementById('controlled-columns').textContent = controlledColumns;
+            document.getElementById('game-over-container').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('start-button').textContent = "Start New Game";
+        }
+
+        function hideGameOver() {
+            document.getElementById('game-over-container').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function showTutorial() {
+            document.getElementById('tutorial-container').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function hideTutorial() {
+            document.getElementById('tutorial-container').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        // Initialize the game board on page load
+        createBoard();
+    </script>
+</body>
+</html>

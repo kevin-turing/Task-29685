@@ -1,1 +1,115 @@
-T1MB
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Royal Strategy Game</title>
+<style>
+    #game-board { font-family: monospace; border-collapse: collapse; }
+    #game-board td { width: 30px; height: 30px; text-align: center; border: 1px solid #ddd; }
+    .piece { font-size: 20px; }
+    .shadow { color: red; }
+    .control { background-color: #e6ffe6; }
+    #controls, #menu { margin: 20px 0; }
+</style>
+</head>
+<body>
+
+<div id="menu">
+    <button onclick="startGame('easy')">Start Easy Game</button>
+    <button onclick="startGame('medium')">Start Medium Game</button>
+    <button onclick="startGame('hard')">Start Hard Game</button>
+</div>
+
+<div id="game" style="display:none;">
+    <div id="controls">
+        <select id="pieceSelect">
+            <option value="K">King ♔ (5)</option>
+            <option value="Q">Queen ♕ (9)</option>
+            <option value="N">Knight ♘ (3)</option>
+            <option value="B">Bishop ♗ (4)</option>
+            <option value="R">Rook ♖ (5)</option>
+        </select>
+        <div>Points: <span id="points">0</span></div>
+    </div>
+    <table id="game-board"></table>
+</div>
+
+<script>
+    let board = [];
+    let points = 0;
+    let shadows = 0;
+    let turns = 0;
+    const maxTurns = 10;
+
+    function initializeBoard(difficulty) {
+        board = Array(8).fill().map(() => Array(8).fill(''));
+        points = 50; // Starting points
+        shadows = difficulty === 'easy' ? 10 : (difficulty === 'medium' ? 15 : 20);
+        turns = 0;
+        placeShadows();
+    }
+
+    function placeShadows() {
+        for(let i = 0; i < shadows; i++) {
+            let x, y;
+            do {
+                x = Math.floor(Math.random() * 8);
+                y = Math.floor(Math.random() * 8);
+            } while(board[y][x] !== '');
+            board[y][x] = '☠️';
+        }
+    }
+
+    function startGame(difficulty) {
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('game').style.display = 'block';
+        initializeBoard(difficulty);
+        renderBoard();
+    }
+
+    function renderBoard() {
+        const boardElement = document.getElementById('game-board');
+        boardElement.innerHTML = '';
+        for(let y = 0; y < 8; y++) {
+            let row = boardElement.insertRow();
+            for(let x = 0; x < 8; x++) {
+                let cell = row.insertCell();
+                cell.innerHTML = board[y][x] || ' ';
+                cell.onclick = () => placePiece(x, y);
+                if(board[y][x] === '☠️') cell.classList.add('shadow');
+            }
+        }
+        document.getElementById('points').innerText = points;
+    }
+
+    function placePiece(x, y) {
+        if(turns >= maxTurns || shadows === 0) return;
+        const piece = document.getElementById('pieceSelect').value;
+        const pieceCost = {'K':5, 'Q':9, 'N':3, 'B':4, 'R':5}[piece];
+        if(points >= pieceCost && board[y][x] !== '☠️') {
+            board[y][x] = piece;
+            points -= pieceCost;
+            if(board[y][x] === '☠️') {
+                points += 5; // Bonus for capturing shadow
+                shadows--;
+            }
+            turns++;
+            checkControl();
+            renderBoard();
+            if(turns >= maxTurns || shadows === 0) endGame();
+        }
+    }
+
+    function checkControl() {
+        // Simplified: check if any row or column is completely controlled
+        // Implement logic to highlight controlled rows/columns
+    }
+
+    function endGame() {
+        alert('Game Over! Final Points: ' + points);
+        // Reset game or return to menu
+    }
+</script>
+
+</body>
+</html>

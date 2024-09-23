@@ -1,164 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>THEMIS & ARTEMIS Mission Visualization</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.3.0/d3.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6"></script>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
-    />
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        background: #000;
-        color: #fff;
-        overflow: hidden;
-      }
-      #visualization {
-        width: 100vw;
-        height: 100vh;
-        position: relative;
-      }
-      .orbit {
-        stroke: #fff;
-        fill: none;
-        stroke-width: 1;
-      }
-      .probe {
-        fill: #ffd700;
-        stroke: #000;
-        stroke-width: 0.5;
-      }
-      .info-box {
-        position: absolute;
-        background: rgba(0, 0, 0, 0.8);
-        padding: 10px;
-        border-radius: 5px;
-        display: none;
-      }
-      .phase-button {
-        background-color: #4caf50; /* Green */
-        border: none;
-        color: white;
-        padding: 15px 32px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin: 4px 2px;
-        cursor: pointer;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="visualization"></div>
-    <div id="info" class="info-box"></div>
-    <div style="position: absolute; bottom: 10px; left: 10px">
-      <button class="phase-button" onclick="showPhase('Tail')">
-        Tail Phase
-      </button>
-      <button class="phase-button" onclick="showPhase('Dawn')">
-        Dawn Phase
-      </button>
-      <button class="phase-button" onclick="showPhase('Dayside')">
-        Dayside Phase
-      </button>
-      <button class="phase-button" onclick="showPhase('Dusk')">
-        Dusk Phase
-      </button>
-    </div>
+<head>
+<meta charset="UTF-8">
+<title>Royal Conquest</title>
+<style>
+    body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f0f0f0; }
+    #gameBoard { display: grid; grid-template-columns: repeat(8, 40px); grid-gap: 2px; margin-top: 20px; }
+    .cell { width: 40px; height: 40px; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .shadow { background-color: grey; }
+    .piece { cursor: pointer; }
+    #menu { margin: 20px; }
+    button, select { padding: 10px; margin: 5px; }
+</style>
+</head>
+<body>
+<div id="menu">
+    <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+    </select>
+    <button onclick="startGame()">Start Game</button>
+</div>
+<div id="gameBoard"></div>
+<div id="score">Points: <span id="points">0</span></div>
+<div id="turns">Turns Left: <span id="turnsLeft"></span></div>
 
-    <script>
-      const width = window.innerWidth,
-        height = window.innerHeight;
-      const svg = d3
-        .select('#visualization')
-        .append('svg')
-        .attr('width', width)
-        .attr('height', height);
+<script>
+    const board = document.getElementById('gameBoard');
+    const pointsDisplay = document.getElementById('points');
+    const turnsLeftDisplay = document.getElementById('turnsLeft');
+    let points = 0, turnsLeft;
+    const pieces = {
+        '♔': {cost: 5, movement: [[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]},
+        '♕': {cost: 9, movement: [[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]},
+        '♘': {cost: 3, movement: [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]},
+    };
+    let gameBoard = [];
 
-      const phases = {
-        Tail: { apogee: 12, sector: 'nightside', mmsPosition: 'dawn' },
-        Dawn: { apogee: 12, sector: 'dawnside', mmsPosition: 'dayside' },
-        Dayside: { apogee: 12, sector: 'dayside', mmsPosition: 'dusk' },
-        Dusk: { apogee: 13, sector: 'duskside', mmsPosition: 'tail' },
-      };
-
-      function drawOrbits(phase) {
-        svg.selectAll('*').remove();
-        const phaseData = phases[phase];
-        const scale = d3
-          .scaleLinear()
-          .domain([0, 30])
-          .range([0, height / 2 - 50]);
-        const center = { x: width / 2, y: height / 2 };
-
-        // Earth
-        svg
-          .append('circle')
-          .attr('cx', center.x)
-          .attr('cy', center.y)
-          .attr('r', 20)
-          .attr('fill', 'blue');
-
-        // Draw THEMIS orbits
-        for (let i = 0; i < 3; i++) {
-          const r = scale(phaseData.apogee + i * 0.5);
-          svg
-            .append('ellipse')
-            .attr('class', 'orbit')
-            .attr('cx', center.x)
-            .attr('cy', center.y)
-            .attr('rx', r)
-            .attr('ry', r * 0.5)
-            .attr('transform', `rotate(${i * 30}, ${center.x}, ${center.y})`);
-
-          // Probe position
-          svg
-            .append('circle')
-            .attr('class', 'probe')
-            .attr('cx', center.x + r * Math.cos((i * Math.PI) / 6))
-            .attr('cy', center.y + r * 0.5 * Math.sin((i * Math.PI) / 6))
-            .attr('r', 5)
-            .on('mouseover', function () {
-              showInfo(phase, i);
-            })
-            .on('mouseout', hideInfo);
+    function createBoard() {
+        for(let i = 0; i < 8; i++) {
+            gameBoard[i] = [];
+            for(let j = 0; j < 8; j++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `${i}_${j}`;
+                board.appendChild(cell);
+                gameBoard[i][j] = {element: cell, piece: null, shadow: false};
+            }
         }
+    }
 
-        // MMS position indicator
-        svg
-          .append('text')
-          .attr('x', width - 100)
-          .attr('y', 50)
-          .text(`MMS: ${phaseData.mmsPosition} sector`)
-          .attr('fill', 'white');
-      }
+    function placeShadows(difficulty) {
+        const shadowCount = difficulty === 'easy' ? 10 : difficulty === 'medium' ? 15 : 20;
+        for(let i = 0; i < shadowCount; i++) {
+            let x, y;
+            do {
+                x = Math.floor(Math.random() * 8);
+                y = Math.floor(Math.random() * 8);
+            } while(gameBoard[x][y].shadow || gameBoard[x][y].piece);
+            gameBoard[x][y].shadow = true;
+            gameBoard[x][y].element.classList.add('shadow');
+        }
+    }
 
-      function showInfo(phase, probeIndex) {
-        d3.select('#info')
-          .style('display', 'block')
-          .html(
-            `Phase: ${phase}<br>Probe ${probeIndex + 3}: Studying ${
-              phaseData.sector
-            } interactions`
-          )
-          .style('left', d3.event.pageX + 10 + 'px')
-          .style('top', d3.event.pageY - 28 + 'px');
-      }
+    function placePiece(x, y, piece) {
+        if(gameBoard[x][y].piece === null && points >= pieces[piece].cost) {
+            points -= pieces[piece].cost;
+            gameBoard[x][y].piece = piece;
+            gameBoard[x][y].element.textContent = piece;
+            gameBoard[x][y].element.classList.add('piece');
+            updateScore();
+            checkCapture(x, y, piece);
+        }
+    }
 
-      function hideInfo() {
-        d3.select('#info').style('display', 'none');
-      }
+    function checkCapture(x, y, piece) {
+        pieces[piece].movement.forEach(move => {
+            const [dx, dy] = move;
+            const newX = x + dx, newY = y + dy;
+            if(newX >= 0 && newX < 8 && newY >= 0 && newY < 8 && gameBoard[newX][newY].shadow) {
+                gameBoard[newX][newY].shadow = false;
+                gameBoard[newX][newY].element.classList.remove('shadow');
+                points += 5; // Bonus for capturing shadow
+            }
+        });
+    }
 
-      function showPhase(phase) {
-        drawOrbits(phase);
-      }
+    function updateScore() {
+        pointsDisplay.textContent = points;
+        turnsLeftDisplay.textContent = turnsLeft;
+        // Check row and column control for additional points
+        // This is a simplified version; real logic would be more complex
+        let rowControl = 0, colControl = 0;
+        for(let i = 0; i < 8; i++) {
+            if(gameBoard[i].every(cell => cell.piece)) rowControl++;
+            if(gameBoard.every(row => row[i].piece)) colControl++;
+        }
+        points += rowControl * 10 + colControl * 10;
+    }
 
-      // Initial draw
-      drawOrbits('Tail');
-    </script>
-  </body>
+    function startGame() {
+        turnsLeft = 20;
+        points = 50; // Starting points
+        gameBoard = [];
+        board.innerHTML = '';
+        createBoard();
+        placeShadows(document.getElementById('difficulty').value);
+        updateScore();
+    }
+
+    // Initial setup
+    createBoard();
+</script>
+</body>
 </html>
